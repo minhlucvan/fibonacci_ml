@@ -23,7 +23,7 @@ class SubjectiveDrawdown:
     models and functios to find optimal drawdown for making fibonacci extensions 
     principal function is self.fit()
     """
-    def __init__(self, verbose =None, target_density=None, drawdown_cap = None, recovery_criteria=None, path_to_model_pred = None, path_to_model_refine = None):
+    def __init__(self, verbose =None, target_density=None, drawdown_cap = None, recovery_criteria=None, path_to_model_pred = None, path_to_model_refine = None, auto_load = True, unit_test = False):
         
         if verbose is None:
             verbose = False
@@ -47,7 +47,9 @@ class SubjectiveDrawdown:
         # load the probabilistic models
         self.model = SubjectiveDrawdownModels(path_to_model_pred = path_to_model_pred,
                                               path_to_model_refine = path_to_model_refine,
-                                              verbose=verbose)            
+                                              verbose=verbose,
+                                              auto_load = auto_load,
+                                            unit_test = unit_test)
     
     def prefeature_trend(self, data, focal_column=None):
         """ mean and std (around residuals)"""
@@ -158,7 +160,7 @@ class SubjectiveDrawdown:
             crit_ = [drawdown_crit*1.001]
             
             if (np.abs(drawdown_crit*1.001 - results['drawdown_crit'].values).min() > 0.0005):
-                results = results.append(pd.DataFrame({'drawdown_crit':crit_, 'density':density_}))
+                results = pd.concat([results, pd.DataFrame({'drawdown_crit':crit_, 'density':density_})], ignore_index=True)
         
         return results
     
@@ -182,8 +184,8 @@ class SubjectiveDrawdown:
         delta_time = (data.index[-1] - data.index[0]).days/365
         
         # initial results
-        results = results.append(pd.DataFrame({'drawdown_crit':[drawdown_crit_increment],
-                                           'density':[1.001*len(fib_series)/delta_time]}))
+        results = pd.concat([results, pd.DataFrame({'drawdown_crit':[drawdown_crit_increment],
+                                           'density':[1.001*len(fib_series)/delta_time]})], ignore_index=True)
         # initial empirical results
         results = self._densities_by_kulling(fib_series,
                                             delta_time,
@@ -217,6 +219,7 @@ class SubjectiveDrawdown:
         delta_time = (data.index[-1] - data.index[0]).days/365
         realized_density = 1.001*len(fibs)/delta_time
         resid = target_density - realized_density
+        ticker = data.index[0].strftime('%Y-%m-%d')
         
         if self.verbose:
             print("%s: DD1 %0.3f:%0.3f fibs/year" % (ticker, drawdown_crit, realized_density))
@@ -264,7 +267,7 @@ class SubjectiveDrawdown:
 
 class SubjectiveDrawdownModels:
     """container for two boosting models that predict drawdown-criterias"""
-    def __init__(self, path_to_model_pred = None, path_to_model_refine = None, verbose=False, unit_test = True):
+    def __init__(self, path_to_model_pred = None, path_to_model_refine = None, verbose=False, unit_test = True, auto_load = True):
         self.verbose = verbose
         #print("current_path; %s" % current_path)
         if path_to_model_pred is None:
@@ -276,8 +279,9 @@ class SubjectiveDrawdownModels:
         self.path_to_model_refine = path_to_model_refine
         
         # load the models
-        self.load_model_pred()
-        self.load_model_refine()
+        if auto_load:
+            self.load_model_pred()
+            self.load_model_refine()
         
         # unit_test on load
         if unit_test:
@@ -324,4 +328,3 @@ class SubjectiveDrawdownModels:
 
 #foo = SubjectiveDrawdownModels(unit_test = True)
 #subjective_drawdown = SubjectiveDrawdown(verbose =True, target_density=0.25)
-

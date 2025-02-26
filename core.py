@@ -11,8 +11,6 @@ from .fib_utils import *
 # import functions to support automatic finding of drawdowns
 from .subjective_drawdown_finder import *
 
-subjective_drawdown = SubjectiveDrawdown(verbose =False, target_density=TARGET_DENSITY)
-
 # a module of fibonacci functions
 def calc_fibs(hi,lo):
     """given a high, and a low, get the fibinocci extensions and retracements. """
@@ -67,6 +65,7 @@ class FibonacciTechnicalAnalysis:
             # find an automatic fibonacci criteria
             print("finding optimal drawdown criteria")
             try:
+                subjective_drawdown = SubjectiveDrawdown(verbose =False, target_density=TARGET_DENSITY)
                 optimal_drawdown_criteria,_ = subjective_drawdown.fit(data = data)
             
             except:
@@ -212,7 +211,7 @@ def get_dummies(series, columns=None):
     
     #fake_series_list_expanded = series.tolist() + columns
     #fake_series_index_expanded = series.index.append(memory_mt.index[-1]  + pd.timedelta_range(start='1 day',periods=len(columns)))
-    series_expanded =  series.append(pd.Series(columns, index = series.index[-1]  + pd.timedelta_range(start='1 day',periods=len(columns))))
+    series_expanded = pd.concat([series, pd.Series(columns, index=series.index[-1] + pd.timedelta_range(start='1 day', periods=len(columns)))])
     dummies = pd.get_dummies(series_expanded).iloc[:-len(columns)]
     assert dummies.shape[0] == series.shape[0]
     return dummies
